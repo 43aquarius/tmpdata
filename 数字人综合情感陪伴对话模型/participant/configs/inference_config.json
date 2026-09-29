@@ -1,0 +1,20 @@
+{
+  "backend": "transformers",
+  "model_path": "./model",
+  "trust_remote_code": false,
+  "device_map": "auto",
+  "torch_dtype": "auto",
+  "base_url": "http://127.0.0.1:8000/v1",
+  "api_model": "local-model",
+  "api_key": "",
+  "request_timeout_seconds": 600,
+  "api_options": {},
+  "generation": {
+    "max_new_tokens": 1200,
+    "do_sample": false,
+    "temperature": 1.0,
+    "top_p": 1.0
+  },
+  "performance_rounds": 100,
+  "hardware_label": "fill-in-before-official-run"
+}

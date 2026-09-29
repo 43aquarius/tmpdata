@@ -1,0 +1,11 @@
+{
+  "id": "test_000001_t1",
+  "response_text": "给用户的回复文本",
+  "emotion_label": "neutral",
+  "user_profile": {
+    "personality_traits": [],
+    "interests": [],
+    "style": []
+  },
+  "memory_refs": []
+}

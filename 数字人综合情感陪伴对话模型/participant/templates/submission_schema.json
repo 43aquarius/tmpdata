@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["id", "response_text", "emotion_label", "user_profile", "memory_refs"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {"type": "string", "pattern": "^test_[0-9]{6}_t[0-9]+$"},
+    "response_text": {"type": "string"},
+    "emotion_label": {"enum": ["", "joy", "gratitude", "relaxed", "care", "pride", "neutral", "surprise", "mixed", "sadness", "loneliness", "anxiety", "anger", "fear", "disgust", "shame", "helplessness"]},
+    "user_profile": {
+      "type": "object",
+      "required": ["personality_traits", "interests", "style"],
+      "additionalProperties": false,
+      "properties": {
+        "personality_traits": {"type": "array", "uniqueItems": true, "items": {"enum": ["extroverted", "introverted", "open", "conservative", "high_conscientiousness", "casual", "agreeable", "assertive", "emotionally_stable", "sensitive"]}},
+        "interests": {"type": "array", "uniqueItems": true, "items": {"enum": ["study_exam", "programming_technology", "reading_writing", "film_animation", "music", "games", "sports_fitness", "travel_outdoor", "pets", "social", "career_development", "art_design"]}},
+        "style": {"type": "array", "uniqueItems": true, "items": {"enum": ["brief", "detailed", "colloquial", "formal", "direct", "indirect", "humorous", "rational", "high_emotional_expression", "low_emotional_expression", "emoji_user"]}}
+      }
+    },
+    "memory_refs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^mem_[0-9]{6}$"}}
+  }
+}

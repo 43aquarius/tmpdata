@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["conversation_id", "turns", "prediction_points"],
+  "additionalProperties": false,
+  "properties": {
+    "conversation_id": {"type": "string", "pattern": "^val_conv_[0-9]{6}$"},
+    "turns": {"$ref": "#/$defs/turns"},
+    "prediction_points": {"type": "array", "items": {"$ref": "#/$defs/predictionPoint"}}
+  },
+  "$defs": {
+    "turns": {"type": "array", "minItems": 1, "items": {"type": "object", "required": ["turn_id", "role", "content"], "additionalProperties": false, "properties": {"turn_id": {"type": "integer", "minimum": 1}, "role": {"enum": ["user", "assistant"]}, "content": {"type": "string", "minLength": 1}}}},
+    "predictionPoint": {"type": "object", "required": ["target_user_turn_id", "assistant_response_turn_id", "target"], "additionalProperties": false, "properties": {"target_user_turn_id": {"type": "integer", "minimum": 1}, "assistant_response_turn_id": {"type": "integer", "minimum": 1}, "target": {"$ref": "#/$defs/target"}}},
+    "target": {"type": "object", "required": ["response_text", "emotion_label", "user_profile", "memory_refs"], "additionalProperties": false, "properties": {"response_text": {"type": "string", "minLength": 1}, "emotion_label": {"$ref": "#/$defs/emotion"}, "user_profile": {"$ref": "#/$defs/profile"}, "memory_refs": {"type": "array", "items": {"type": "string", "pattern": "^mem_[0-9]{6}$"}, "uniqueItems": true}}},
+    "emotion": {"enum": ["joy", "gratitude", "relaxed", "care", "pride", "neutral", "surprise", "mixed", "sadness", "loneliness", "anxiety", "anger", "fear", "disgust", "shame", "helplessness"]},
+    "profile": {"type": "object", "required": ["personality_traits", "interests", "style"], "additionalProperties": false, "properties": {"personality_traits": {"type": "array", "items": {"enum": ["extroverted", "introverted", "open", "conservative", "high_conscientiousness", "casual", "agreeable", "assertive", "emotionally_stable", "sensitive"]}, "uniqueItems": true}, "interests": {"type": "array", "items": {"enum": ["study_exam", "programming_technology", "reading_writing", "film_animation", "music", "games", "sports_fitness", "travel_outdoor", "pets", "social", "career_development", "art_design"]}, "uniqueItems": true}, "style": {"type": "array", "items": {"enum": ["brief", "detailed", "colloquial", "formal", "direct", "indirect", "humorous", "rational", "high_emotional_expression", "low_emotional_expression", "emoji_user"]}, "uniqueItems": true}}}
+  }
+}
