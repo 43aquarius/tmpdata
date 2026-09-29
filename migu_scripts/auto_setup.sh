@@ -2,23 +2,37 @@
 # ============================================================================
 # 咪咕大赛一键部署脚本（在咪咕仝学实例终端运行）
 # 用法: bash auto_setup.sh
-# 前提: 已将 https://github.com/43aquarius/tmpdata 克隆到 /mnt/storage/work
+# 前置: 已将 https://github.com/43aquarius/tmpdata 克隆到 /mnt/storage/work
 #
 # 全流程: 装依赖 -> ModelScope下载Qwen3-4B -> 转换SFT数据 ->
 #          LoRA训练(约2小时) -> 合并模型 -> 官方脚本端到端验证
 # 幂等性: 每阶段完成会写标记文件 .done_<step>，中断后重跑自动跳过
 # 日志:   /mnt/storage/workspace/pipeline.log + train.log
 # ============================================================================
+
+# ---------- CRLF自愈: 若本文件含Windows换行符, 清洗所有脚本后重载自身 ----------
+if grep -q $'\r' "$0" 2>/dev/null; then
+  echo "detecting CRLF, self-healing..."
+  sed -i 's/\r$//' "$0" "$(dirname "$0")"/*.py 2>/dev/null
+  exec bash "$0" "$@"
+fi
+
 set -o pipefail
 
 WORK=/mnt/storage/work                       # repo clone 目录
 WS=/mnt/storage/workspace                    # 工作区(模型/数据/产物)
-REPO_DATA="$WORK/数字人综合情感陪伴对话模型"
-PART="$WS/participant"                       # 官方推理框架(从repo复制)
 BASE_MODEL="$WS/base_model"                  # Qwen3-4B-Instruct-2507
 FINAL_MODEL="$WS/model"                      # 合并后最终模型
-MODEL_ID="Qwen/Qwen3-4B-Instruct-2507"
 
+# ---------- 数据路径自动探测(不依赖中文目录名, 兼容乱码) ----------
+TRAIN_JSONL=$(find /mnt/storage/work -name "train_public.jsonl" 2>/dev/null | head -1)
+if [ -n "$TRAIN_JSONL" ]; then
+  DATA_ROOT=$(cd "$(dirname "$TRAIN_JSONL")/.." && pwd)   # .../训练-验证-数据集
+  REPO_ROOT=$(cd "$DATA_ROOT/.." && pwd)                   # repo根(或其乱码形式)
+else
+  DATA_ROOT=""; REPO_ROOT="/mnt/storage/work"
+fi
+PART="$WS/participant"                       # 官方推理框架
 # 激活平台固定环境(与官方start.sh一致)
 source activate conda_env 2>/dev/null || conda activate conda_env 2>/dev/null || true
 which python3; python3 -V
@@ -71,17 +85,24 @@ fi
 # ---------- 3. SFT数据转换 ----------
 if [ ! -f "$WS/.done_data" ]; then
   echo "---- [step data] $(date) ----"
-  cp -r "$REPO_DATA/participant" "$PART" 2>/dev/null || true
-  cp "$REPO_DATA/test_inference_data.jsonl" "$WS/" 2>/dev/null || true
-  cp "$REPO_DATA/数字人综合情感陪伴对话模型"/*.py "$WS/" 2>/dev/null || cp "$REPO_DATA"/*.py "$WS/"
-  # repo根目录下的脚本(migu_scripts/)
-  cp -r "$WORK/migu_scripts/." "$WS/" 2>/dev/null || true
-  python3 "$WS/convert_to_sft.py" --data "$REPO_DATA/训练-验证-数据集" --out "$WS" && touch "$WS/.done_data" || { echo "data convert FAILED"; exit 1; }
+  # 定位官方participant目录(含run_inference.py)
+  RUN_INF=$(find /mnt/storage/work -name "run_inference.py" 2>/dev/null | head -1)
+  if [ -n "$RUN_INF" ] && [ ! -d "$PART" ]; then
+    cp -r "$(dirname "$RUN_INF")" "$PART"
+  fi
+  TEST_JSONL=$(find /mnt/storage/work -maxdepth 3 -name "test_inference_data.jsonl" 2>/dev/null | head -1)
+  [ -n "$TEST_JSONL" ] && cp -f "$TEST_JSONL" "$WS/test_inference_data.jsonl"
+  # 同步最新脚本到workspace(修复后代码立即生效)
+  SCRIPT_SRC=$(dirname "$0")
+  cp -f "$SCRIPT_SRC"/*.py "$WS/" 2>/dev/null
+  python3 "$WS/convert_to_sft.py" --data "$DATA_ROOT" --out "$WS" && touch "$WS/.done_data" || { echo "data convert FAILED"; exit 1; }
 fi
 
-# ---------- 4. LoRA训练(前台跑完,建议在tmux/nohup中运行本脚本) ----------
+# ---------- 4. LoRA训练(建议在nohup/tmux中运行本脚本) ----------
 if [ ! -f "$WS/.done_train" ]; then
   echo "---- [step train] $(date) ----"
+  # 确保workspace里是修复后的脚本(即使data步骤已跳过)
+  cp -f "$(dirname "$0")"/train_lora.py "$WS/" 2>/dev/null
   python3 "$WS/train_lora.py" \
     --model_path "$BASE_MODEL" \
     --train_file "$WS/train_sft.jsonl" \

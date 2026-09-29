@@ -86,11 +86,13 @@ def collate(batch, pad_id):
         input_ids.append(b["input_ids"] + [pad_id] * pad)
         labels.append(b["labels"] + [-100] * pad)
         attn.append([1] * n + [0] * pad)
-    return (
-        torch.tensor(input_ids, dtype=torch.long),
-        torch.tensor(labels, dtype=torch.long),
-        torch.tensor(attn, dtype=torch.long),
-    )
+    # MUST return dict: Trainer feeds tensors to model.forward(input_ids, attention_mask, labels)
+    # a tuple here would silently reorder fields and crash compute_loss
+    return {
+        "input_ids": torch.tensor(input_ids, dtype=torch.long),
+        "attention_mask": torch.tensor(attn, dtype=torch.long),
+        "labels": torch.tensor(labels, dtype=torch.long),
+    }
 
 
 def load_jsonl(p):
