@@ -29,6 +29,14 @@ LOG="$WS/pipeline.log"
 exec >>"$LOG" 2>&1   # 全部输出写日志(终端看不到,用 tail -f pipeline.log 看)
 echo "==== pipeline start: $(date) ===="
 
+# ---------- 0. GPU预检(无GPU直接报错退出,避免浪费券时) ----------
+if ! nvidia-smi >/dev/null 2>&1; then
+  echo "!!!! ERROR: nvidia-smi 不可用,实例没有GPU! 请关机后重新'开机'(注意不是'无卡开机')"
+  echo "!!!! 修复后重跑本脚本即可(已完成步骤会自动跳过)"
+  exit 1
+fi
+nvidia-smi | head -11
+
 step() {  # step <name> <command...>
   local name="$1"; shift
   if [ -f "$WS/.done_$name" ]; then echo "[skip] $name already done"; return 0; fi
