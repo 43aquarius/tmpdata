@@ -19,6 +19,11 @@ fi
 
 set -o pipefail
 
+# 绝对路径解析(必须在任何cd之前! 否则cd后相对路径失效会复用旧脚本)
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+echo "SCRIPT_DIR=$SCRIPT_DIR"  # 日志重定向前先记变量,重定向后echo
+
 WORK=/mnt/storage/work                       # repo clone 目录
 WS=/mnt/storage/workspace                    # 工作区(模型/数据/产物)
 BASE_MODEL="$WS/base_model"                  # Qwen3-4B-Instruct-2507
@@ -42,6 +47,15 @@ mkdir -p "$WS"
 LOG="$WS/pipeline.log"
 exec >>"$LOG" 2>&1   # 全部输出写日志(终端看不到,用 tail -f pipeline.log 看)
 echo "==== pipeline start: $(date) ===="
+echo "scripts from: $SCRIPT_DIR"
+
+# ---------- 0.4 每次运行强制同步最新脚本(保证修复生效,幂等) ----------
+cp -f "$SCRIPT_DIR"/*.py "$WS/" 2>/dev/null || true
+if ! grep -q "MUST return dict" "$WS/train_lora.py" 2>/dev/null; then
+  echo "!!!! ERROR: train_lora.py 是旧版本(缺collate修复)! 请: cd /mnt/storage/work && git pull 后重跑"
+  exit 1
+fi
+echo "script sync OK (pipeline-v4, collate-dict-fix verified)"
 
 # ---------- 0. GPU预检(无GPU直接报错退出,避免浪费券时) ----------
 if ! nvidia-smi >/dev/null 2>&1; then
@@ -69,7 +83,7 @@ fi
 # ---------- 2. 基座模型下载(ModelScope国内源) ----------
 if [ ! -f "$WS/.done_model" ]; then
   echo "---- [step model] $(date) ----"
-  if [ -f "$BASE_MODEL/config.json" ] && [ -f "$BASE_MODEL/model-00002-of-00002.safetensors" -o -f "$BASE_MODEL/model.safetensors" ]; then
+  if [ -f "$BASE_MODEL/config.json" ] && ls "$BASE_MODEL"/model-*.safetensors >/dev/null 2>&1; then
     echo "base model already present"
   else
     python3 - <<'PYEOF'
@@ -92,17 +106,12 @@ if [ ! -f "$WS/.done_data" ]; then
   fi
   TEST_JSONL=$(find /mnt/storage/work -maxdepth 3 -name "test_inference_data.jsonl" 2>/dev/null | head -1)
   [ -n "$TEST_JSONL" ] && cp -f "$TEST_JSONL" "$WS/test_inference_data.jsonl"
-  # 同步最新脚本到workspace(修复后代码立即生效)
-  SCRIPT_SRC=$(dirname "$0")
-  cp -f "$SCRIPT_SRC"/*.py "$WS/" 2>/dev/null
   python3 "$WS/convert_to_sft.py" --data "$DATA_ROOT" --out "$WS" && touch "$WS/.done_data" || { echo "data convert FAILED"; exit 1; }
 fi
 
 # ---------- 4. LoRA训练(建议在nohup/tmux中运行本脚本) ----------
 if [ ! -f "$WS/.done_train" ]; then
   echo "---- [step train] $(date) ----"
-  # 确保workspace里是修复后的脚本(即使data步骤已跳过)
-  cp -f "$(dirname "$0")"/train_lora.py "$WS/" 2>/dev/null
   python3 "$WS/train_lora.py" \
     --model_path "$BASE_MODEL" \
     --train_file "$WS/train_sft.jsonl" \
