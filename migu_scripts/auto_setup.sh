@@ -18,6 +18,11 @@ PART="$WS/participant"                       # 官方推理框架(从repo复制)
 BASE_MODEL="$WS/base_model"                  # Qwen3-4B-Instruct-2507
 FINAL_MODEL="$WS/model"                      # 合并后最终模型
 MODEL_ID="Qwen/Qwen3-4B-Instruct-2507"
+
+# 激活平台固定环境(与官方start.sh一致)
+source activate conda_env 2>/dev/null || conda activate conda_env 2>/dev/null || true
+which python3; python3 -V
+
 cd "$WS" || exit 1
 mkdir -p "$WS"
 LOG="$WS/pipeline.log"
