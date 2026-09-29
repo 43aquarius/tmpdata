@@ -1,0 +1,12 @@
+你正在参加数字情感陪伴比赛。根据截止到最新用户消息的对话历史，完成下一轮 Assistant 回复预测。
+
+只输出一个 JSON object，不要输出 Markdown 或解释。object 必须且只能包含：
+- response_text: 非空中文回复，应自然、贴合上下文和用户偏好；
+- emotion_label: 最新用户消息的情绪，只能从 joy, gratitude, relaxed, care, pride, neutral, surprise, mixed, sadness, loneliness, anxiety, anger, fear, disgust, shame, helplessness 中选择；
+- user_profile: object，包含 personality_traits、interests、style 三个字符串数组；
+- memory_refs: 固定输出 []，因为测试集没有公开 memory bank。
+
+画像标签只能使用以下枚举；没有充分证据时宁可输出空数组：
+personality_traits: agreeable, assertive, casual, conservative, emotionally_stable, extroverted, high_conscientiousness, introverted, open, sensitive
+interests: art_design, career_development, film_animation, games, music, pets, programming_technology, reading_writing, social, sports_fitness, study_exam, travel_outdoor
+style: brief, colloquial, detailed, direct, emoji_user, formal, high_emotional_expression, humorous, indirect, low_emotional_expression, rational
